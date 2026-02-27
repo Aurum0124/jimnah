@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Flappy Girlfriend</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #222;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #fff;
+    }
+
+    #game-container {
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    canvas {
+      display: block;
+      background: linear-gradient(180deg, #6dd5fa 0%, #2980b9 60%, #2c3e50 100%);
+    }
+
+    #ui {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+    }
+
+    #top-bar {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      font-weight: 600;
+      text-shadow: 0 0 6px rgba(0, 0, 0, 0.7);
+    }
+
+    #title {
+      font-size: 24px;
+      letter-spacing: 1px;
+    }
+
+    #score {
+      font-size: 24px;
+    }
+
+    #message {
+      pointer-events: auto;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.45);
+      margin-bottom: 24px;
+      padding: 12px 18px;
+      border-radius: 999px;
+      font-size: 16px;
+      backdrop-filter: blur(10px);
+    }
+
+    #message span {
+      display: block;
+      font-size: 14px;
+      opacity: 0.85;
+      margin-top: 4px;
+    }
+
+    #credits {
+      pointer-events: none;
+      font-size: 11px;
+      opacity: 0.8;
+    }
+
+    /* Optional: “pixel-ish” vibe */
+    .pixel {
+      image-rendering: pixelated;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="game" width="400" height="600"></canvas>
+    <div id="ui">
+      <div id="top-bar">
+        <div id="title">Flappy Girlfriend 💖</div>
+        <div id="score">0</div>
+      </div>
+      <div id="message">
+        Tap / Click / Space to flap!
+        <span>Help her fly through the gaps 🕊️</span>
+      </div>
+      <div id="credits">
+        Made with love for you 💘
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+
+    const scoreEl = document.getElementById("score");
+    const messageEl = document.getElementById("message");
+
+    const WIDTH = canvas.width;
+    const HEIGHT = canvas.height;
+
+    // Game state
+    let bird;
+    let pipes;
+    let frame = 0;
+    let score = 0;
+    let best = 0;
+    let gameOver = false;
+    let started = false;
+
+    // Physics
+    const gravity = 0.35;
+    const jumpStrength = -7;
+    const pipeGap = 140;
+    const pipeWidth = 70;
+    const pipeSpeed = 2.5;
+    const pipeInterval = 100; // frames
+
+    // Bird "avatar" – we’ll draw a circle or an image
+    const birdRadius = 18;
+
+    // OPTIONAL: use a photo of her as the bird
+    // 1. Add a file named "gf.png" to your repo.
+    // 2. Uncomment the image section below and replace "gf.png" with the filename.
+    const birdImg = new Image();
+    birdImg.src = "gf.png"; // put her photo here
+    let birdImgLoaded = false;
+    birdImg.onload = () => {
+      birdImgLoaded = true;
+    };
+
+    function resetGame() {
+      bird = {
+        x: WIDTH * 0.25,
+        y: HEIGHT * 0.5,
+        vy: 0,
+      };
+      pipes = [];
+      frame = 0;
+      score = 0;
+      gameOver = false;
+      started = false;
+      scoreEl.textContent = "0";
+      messageEl.innerHTML =
+        'Tap / Click / Space to flap! <span>Help her fly through the gaps 🕊️</span>';
+    }
+
+    function spawnPipe() {
+      const minHeight = 60;
+      const maxTop = HEIGHT - pipeGap - minHeight;
+      const topHeight = Math.random() * (maxTop - minHeight) + minHeight;
+      const bottomY = topHeight + pipeGap;
+
+      pipes.push({
+        x: WIDTH,
+        topHeight,
+        bottomY,
+        passed: false,
+      });
+    }
+
+    function flap() {
+      if (!started) {
+        started = true;
+        messageEl.textContent = "";
+      }
+      if (gameOver) {
+        resetGame();
+        return;
+      }
+      bird.vy = jumpStrength;
+    }
+
+    function update() {
+      if (!gameOver && started) {
+        // Bird physics
+        bird.vy += gravity;
+        bird.y += bird.vy;
+
+        // Pipes
+        frame++;
+        if (frame % pipeInterval === 0) {
+          spawnPipe();
+        }
+
+        for (let p of pipes) {
+          p.x -= pipeSpeed;
+
+          // Scoring
+          if (!p.passed && p.x + pipeWidth < bird.x) {
+            p.passed = true;
+            score++;
+            scoreEl.textContent = score;
+            if (score > best) best = score;
+          }
+        }
+
+        // Remove off-screen pipes
+        pipes = pipes.filter((p) => p.x + pipeWidth > 0);
+
+        // Collision detection
+        if (bird.y + birdRadius >= HEIGHT || bird.y - birdRadius <= 0) {
+          gameOver = true;
+        }
+
+        for (let p of pipes) {
+          const inXRange =
+            bird.x + birdRadius > p.x && bird.x - birdRadius < p.x + pipeWidth;
+          const hitsTop = bird.y - birdRadius < p.topHeight;
+          const hitsBottom = bird.y + birdRadius > p.bottomY;
+          if (inXRange && (hitsTop || hitsBottom)) {
+            gameOver = true;
+          }
+        }
+
+        if (gameOver) {
+          messageEl.innerHTML =
+            `Game over! Score: ${score} (Best: ${best})<span>Tap / Click / Space to try again 💗</span>`;
+        }
+      }
+
+      draw();
+      requestAnimationFrame(update);
+    }
+
+    function drawBackground() {
+      // Simple ground
+      const groundHeight = 60;
+      ctx.fillStyle = "#27ae60";
+      ctx.fillRect(0, HEIGHT - groundHeight, WIDTH, groundHeight);
+
+      ctx.fillStyle = "#2ecc71";
+      ctx.fillRect(0, HEIGHT - groundHeight + 15, WIDTH, groundHeight - 15);
+    }
+
+    function drawBird() {
+      if (birdImgLoaded) {
+        ctx.save();
+        ctx.translate(bird.x, bird.y);
+        ctx.rotate(bird.vy * 0.03); // tilt slightly based on velocity
+        const size = birdRadius * 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, birdRadius, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(birdImg, -birdRadius, -birdRadius, size, size);
+        ctx.restore();
+      } else {
+        // Fallback: cute circle
+        const gradient = ctx.createRadialGradient(
+          bird.x - 5,
+          bird.y - 5,
+          5,
+          bird.x,
+          bird.y,
+          birdRadius + 2
+        );
+        gradient.addColorStop(0, "#ffecd2");
+        gradient.addColorStop(1, "#fcb69f");
+
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(bird.x, bird.y, birdRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Eye
+        ctx.fillStyle = "#333";
+        ctx.beginPath();
+        ctx.arc(bird.x + 6, bird.y - 4, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Beak (heart-ish)
+        ctx.fillStyle = "#ff6b81";
+        ctx.beginPath();
+        ctx.moveTo(bird.x + 10, bird.y + 2);
+        ctx.lineTo(bird.x + 16, bird.y);
+        ctx.lineTo(bird.x + 10, bird.y - 2);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    function drawPipes() {
+      for (let p of pipes) {
+        ctx.fillStyle = "#16a085";
+        // top pipe
+        ctx.fillRect(p.x, 0, pipeWidth, p.topHeight);
+        // bottom pipe
+        ctx.fillRect(p.x, p.bottomY, pipeWidth, HEIGHT - p.bottomY);
+
+        // decorative lip
+        ctx.fillStyle = "#1abc9c";
+        ctx.fillRect(p.x - 4, p.topHeight - 10, pipeWidth + 8, 12);
+        ctx.fillRect(p.x - 4, p.bottomY - 2, pipeWidth + 8, 12);
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, WIDTH, HEIGHT);
+
+      drawBackground();
+      drawPipes();
+      drawBird();
+    }
+
+    // Input
+    window.addEventListener("keydown", (e) => {
+      if (e.code === "Space" || e.code === "ArrowUp") {
+        e.preventDefault();
+        flap();
+      }
+    });
+
+    window.addEventListener("mousedown", flap);
+    window.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      flap();
+    });
+
+    resetGame();
+    update();
+  </script>
+</body>
+</html>
