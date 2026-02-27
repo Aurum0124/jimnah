@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Flappy Girlfriend</title>
+  <title>Flappy Game</title>
   <style>
     * {
       box-sizing: border-box;
@@ -90,16 +90,14 @@
     <canvas id="game" width="400" height="600"></canvas>
     <div id="ui">
       <div id="top-bar">
-        <div id="title">Flappy Girlfriend 💖</div>
+        <div id="title"></div>
         <div id="score">0</div>
       </div>
       <div id="message">
         Tap / Click / Space to flap!
         <span>Help her fly through the gaps 🕊️</span>
       </div>
-      <div id="credits">
-        Made with love for you 💘
-      </div>
+      <div id="credits"></div>
     </div>
   </div>
 
@@ -123,13 +121,13 @@
     let started = false;
     let greetingShown = false; // score-25 greeting flag
 
-    // Physics
-    const gravity = 0.35;
-    const jumpStrength = -7;
-    const pipeGap = 140;
+    // Physics (tuned to be easier)
+    const gravity = 0.30;
+    const jumpStrength = -7.5;
+    const pipeGap = 190;      // bigger gap = easier
     const pipeWidth = 70;
-    const pipeSpeed = 2.5;
-    const pipeInterval = 100; // frames
+    const pipeSpeed = 2.0;    // slower pipes
+    const pipeInterval = 115; // a bit more distance between pipes
 
     // Bird "avatar"
     const birdRadius = 18;
