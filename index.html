@@ -83,11 +83,6 @@
       font-size: 11px;
       opacity: 0.8;
     }
-
-    /* Optional: “pixel-ish” vibe */
-    .pixel {
-      image-rendering: pixelated;
-    }
   </style>
 </head>
 <body>
@@ -126,6 +121,7 @@
     let best = 0;
     let gameOver = false;
     let started = false;
+    let greetingShown = false; // score-25 greeting flag
 
     // Physics
     const gravity = 0.35;
@@ -135,14 +131,12 @@
     const pipeSpeed = 2.5;
     const pipeInterval = 100; // frames
 
-    // Bird "avatar" – we’ll draw a circle or an image
+    // Bird "avatar"
     const birdRadius = 18;
 
-    // OPTIONAL: use a photo of her as the bird
-    // 1. Add a file named "gf.png" to your repo.
-    // 2. Uncomment the image section below and replace "gf.png" with the filename.
+    // OPTIONAL: use her photo as the bird
     const birdImg = new Image();
-    birdImg.src = "gf.png"; // put her photo here
+    birdImg.src = "gf.png"; // upload gf.png next to index.html
     let birdImgLoaded = false;
     birdImg.onload = () => {
       birdImgLoaded = true;
@@ -159,6 +153,7 @@
       score = 0;
       gameOver = false;
       started = false;
+      greetingShown = false;
       scoreEl.textContent = "0";
       messageEl.innerHTML =
         'Tap / Click / Space to flap! <span>Help her fly through the gaps 🕊️</span>';
@@ -211,17 +206,32 @@
             score++;
             scoreEl.textContent = score;
             if (score > best) best = score;
+
+            // Threshold: show greeting when score hits 25
+            if (score === 25 && !greetingShown) {
+              greetingShown = true;
+              gameOver = true;
+              messageEl.innerHTML = `
+                You did it! Score 25! 💖
+                <span>
+                  I made this little game just for you because I love you.
+                  Thanks for always flying with me. 💘
+                  <br/>Tap / Click / Space to play again.
+                </span>
+              `;
+            }
           }
         }
 
         // Remove off-screen pipes
         pipes = pipes.filter((p) => p.x + pipeWidth > 0);
 
-        // Collision detection
+        // Collision detection with floor/ceiling
         if (bird.y + birdRadius >= HEIGHT || bird.y - birdRadius <= 0) {
           gameOver = true;
         }
 
+        // Collision with pipes
         for (let p of pipes) {
           const inXRange =
             bird.x + birdRadius > p.x && bird.x - birdRadius < p.x + pipeWidth;
@@ -232,7 +242,7 @@
           }
         }
 
-        if (gameOver) {
+        if (gameOver && !greetingShown) {
           messageEl.innerHTML =
             `Game over! Score: ${score} (Best: ${best})<span>Tap / Click / Space to try again 💗</span>`;
         }
@@ -243,7 +253,6 @@
     }
 
     function drawBackground() {
-      // Simple ground
       const groundHeight = 60;
       ctx.fillStyle = "#27ae60";
       ctx.fillRect(0, HEIGHT - groundHeight, WIDTH, groundHeight);
@@ -256,7 +265,7 @@
       if (birdImgLoaded) {
         ctx.save();
         ctx.translate(bird.x, bird.y);
-        ctx.rotate(bird.vy * 0.03); // tilt slightly based on velocity
+        ctx.rotate(bird.vy * 0.03);
         const size = birdRadius * 2;
         ctx.beginPath();
         ctx.arc(0, 0, birdRadius, 0, Math.PI * 2);
@@ -265,7 +274,6 @@
         ctx.drawImage(birdImg, -birdRadius, -birdRadius, size, size);
         ctx.restore();
       } else {
-        // Fallback: cute circle
         const gradient = ctx.createRadialGradient(
           bird.x - 5,
           bird.y - 5,
@@ -282,13 +290,11 @@
         ctx.arc(bird.x, bird.y, birdRadius, 0, Math.PI * 2);
         ctx.fill();
 
-        // Eye
         ctx.fillStyle = "#333";
         ctx.beginPath();
         ctx.arc(bird.x + 6, bird.y - 4, 3, 0, Math.PI * 2);
         ctx.fill();
 
-        // Beak (heart-ish)
         ctx.fillStyle = "#ff6b81";
         ctx.beginPath();
         ctx.moveTo(bird.x + 10, bird.y + 2);
@@ -302,12 +308,9 @@
     function drawPipes() {
       for (let p of pipes) {
         ctx.fillStyle = "#16a085";
-        // top pipe
         ctx.fillRect(p.x, 0, pipeWidth, p.topHeight);
-        // bottom pipe
         ctx.fillRect(p.x, p.bottomY, pipeWidth, HEIGHT - p.bottomY);
 
-        // decorative lip
         ctx.fillStyle = "#1abc9c";
         ctx.fillRect(p.x - 4, p.topHeight - 10, pipeWidth + 8, 12);
         ctx.fillRect(p.x - 4, p.bottomY - 2, pipeWidth + 8, 12);
@@ -316,7 +319,6 @@
 
     function draw() {
       ctx.clearRect(0, 0, WIDTH, HEIGHT);
-
       drawBackground();
       drawPipes();
       drawBird();
